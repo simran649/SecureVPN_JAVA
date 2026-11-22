@@ -3,6 +3,8 @@ import java.security.*;
 import java.util.Base64;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
+import java.util.ArrayList;
+import java.util.List;
 
 public class DatabaseManager {
 
@@ -224,5 +226,74 @@ public class DatabaseManager {
             System.out.println("Message logging failed: " + e.getMessage());
         }
     }
+
+    public static List<String[]> getAllUsers() {
+
+        List<String[]> users = new ArrayList<>();
+
+        String sql = """
+            SELECT username, role, is_active
+            FROM users
+            ORDER BY username
+            """;
+
+        try (Connection conn = getConnection();
+             java.sql.PreparedStatement stmt = conn.prepareStatement(sql);
+             java.sql.ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                users.add(new String[]{
+                    rs.getString("username"),
+                    rs.getString("role"),
+                    rs.getBoolean("is_active") ? "Active" : "Inactive"
+                });
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Could not retrieve users: " + e.getMessage());
+        }
+
+        return users;
+    }
+
+    public static List<String[]> getRecentLogs() {
+
+        List<String[]> logs = new ArrayList<>();
+
+        String sql = """
+            SELECT
+                COALESCE(s.username, 'Unknown') AS sender,
+                COALESCE(r.username, 'Unknown') AS receiver,
+                n.encryption_algorithm,
+                n.status,
+                n.created_at
+            FROM network_logs n
+            LEFT JOIN users s ON n.sender_id = s.user_id
+            LEFT JOIN users r ON n.receiver_id = r.user_id
+            ORDER BY n.created_at DESC
+            LIMIT 50
+            """;
+
+        try (Connection conn = getConnection();
+             java.sql.PreparedStatement stmt = conn.prepareStatement(sql);
+             java.sql.ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                logs.add(new String[]{
+                    rs.getString("sender"),
+                    rs.getString("receiver"),
+                    rs.getString("encryption_algorithm"),
+                    rs.getString("status"),
+                    rs.getString("created_at")
+                });
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Could not retrieve logs: " + e.getMessage());
+        }
+
+        return logs;
+    }
+
 
 }
