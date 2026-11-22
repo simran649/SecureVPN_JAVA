@@ -8,7 +8,6 @@ public class VPNServer {
 
     private static final int PORT = 8080;
 
-    // Stores all currently connected employees
     private static final ConcurrentMap<String, ClientHandler> clients =
             new ConcurrentHashMap<>();
 
@@ -25,16 +24,12 @@ public class VPNServer {
             System.out.println("Waiting for employees...\n");
 
             while (true) {
-
                 Socket socket = serverSocket.accept();
 
-                System.out.println("New connection received from: "
+                System.out.println("New connection from: "
                         + socket.getInetAddress());
 
-                ClientHandler handler = new ClientHandler(socket);
-
-                Thread thread = new Thread(handler);
-                thread.start();
+                new Thread(new ClientHandler(socket)).start();
             }
 
         } catch (IOException e) {
@@ -42,7 +37,6 @@ public class VPNServer {
         }
     }
 
-    // Sends the current online user list to all clients
     public static void broadcastUsers() {
 
         String users = clients.keySet()
@@ -55,13 +49,13 @@ public class VPNServer {
         }
     }
 
-    // Handles an individual employee connection
     static class ClientHandler implements Runnable {
 
         private final Socket socket;
         private BufferedReader input;
         private PrintWriter output;
         private String username;
+        private String role;
 
         ClientHandler(Socket socket) {
             this.socket = socket;
@@ -77,48 +71,75 @@ public class VPNServer {
         public void run() {
 
             try {
-
                 input = new BufferedReader(
                         new InputStreamReader(socket.getInputStream()));
 
                 output = new PrintWriter(
                         socket.getOutputStream(), true);
 
-                // Receive login request
+                // Receive login credentials
                 String login = input.readLine();
 
-                if (login == null || !login.startsWith("LOGIN|")) {
+                if (login == null) {
+                    sendMessage("ERROR|No login request received");
+                    return;
+                }
+
+                String[] credentials = login.split("\\|", 3);
+
+                if (credentials.length != 3 ||
+                        !credentials[0].equals("LOGIN")) {
                     sendMessage("ERROR|Invalid login request");
                     return;
                 }
 
-                username = login.substring(6).trim();
+                username = credentials[1].trim();
+                String password = credentials[2];
 
                 if (!username.matches("[a-zA-Z0-9_]{3,20}")) {
                     sendMessage("ERROR|Invalid username");
+                    username = null;
                     return;
                 }
 
-                // Register employee if username is not already online
+                // Authenticate using MySQL
+                role = DatabaseManager.authenticateUser(username, password);
+
+                if (role == null) {
+                    sendMessage("ERROR|Invalid username or password");
+                    username = null;
+                    return;
+                }
+
+                // Prevent duplicate online usernames
                 if (clients.putIfAbsent(username, this) != null) {
                     sendMessage("ERROR|Username already online");
+                    username = null;
                     return;
                 }
 
                 sendMessage("LOGIN_OK|" + username);
+                DatabaseManager.recordConnection(
+                        username,
+                        socket.getInetAddress().getHostAddress()
+                );
 
-                System.out.println(username + " connected successfully.");
+                System.out.println("\n========== LOGIN LOG ==========");
+                System.out.println("User: " + username);
+                System.out.println("Role: " + role);
+                System.out.println("Status: Authenticated");
+                System.out.println("================================");
 
                 broadcastUsers();
 
                 String message;
 
-                // Continuously listen for client messages
                 while ((message = input.readLine()) != null) {
 
                     String[] parts = message.split("\\|", 3);
 
                     if (parts[0].equals("USERS")) {
+
                         sendMessage("USERS|" +
                                 String.join(",", clients.keySet()));
                     }
@@ -126,27 +147,31 @@ public class VPNServer {
                     else if (parts[0].equals("MSG") && parts.length == 3) {
 
                         String recipient = parts[1];
-                        String text = parts[2];
+                        String encryptedText = parts[2];
 
                         ClientHandler target = clients.get(recipient);
 
                         if (target != null) {
 
                             target.sendMessage(
-                                    "FROM|" + username + "|" + text);
+                                    "FROM|" + username + "|" + encryptedText);
 
                             sendMessage("SENT|" + recipient);
+                            DatabaseManager.logMessage(
+                                    username,
+                                    recipient,
+                                    encryptedText
+                            );
 
                             System.out.println("\n========== NETWORK LOG ==========");
                             System.out.println("Sender: " + username);
                             System.out.println("Receiver: " + recipient);
                             System.out.println("Encryption: AES-GCM");
-                            System.out.println("Encrypted Payload: " + text);
+                            System.out.println("Encrypted Payload: " + encryptedText);
                             System.out.println("Status: Forwarded");
                             System.out.println("=================================");
 
-                        }
-                        else {
+                        } else {
                             sendMessage("ERROR|Employee is offline");
                         }
                     }
@@ -163,11 +188,11 @@ public class VPNServer {
 
                 if (username != null && clients.remove(username, this)) {
 
-                    System.out.println(username + " disconnected.");
+                    DatabaseManager.closeConnection(username);
 
+                    System.out.println(username + " disconnected.");
                     broadcastUsers();
                 }
-
                 try {
                     socket.close();
                 } catch (IOException ignored) {

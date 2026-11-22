@@ -30,7 +30,11 @@ public class VPNClient {
             System.out.print("Enter username: ");
             String username = scanner.nextLine().trim();
 
-            output.println("LOGIN|" + username);
+            System.out.print("Enter password: ");
+            String password = scanner.nextLine();
+
+            // Send credentials to server
+            output.println("LOGIN|" + username + "|" + password);
 
             String response = input.readLine();
 
@@ -40,7 +44,7 @@ public class VPNClient {
                 return;
             }
 
-            System.out.println("\nConnected successfully!");
+            System.out.println("\nLogin successful!");
             System.out.println("Welcome, " + username);
 
             // Background thread listens for incoming messages
@@ -79,15 +83,12 @@ public class VPNClient {
                                     + (users.isEmpty() ? "None" : users));
 
                             System.out.print("Enter command: ");
-
                         }
 
                         else if (message.startsWith("SENT|")) {
 
                             System.out.println("Message sent successfully!");
-
                             System.out.print("Enter command: ");
-
                         }
 
                         else if (message.startsWith("ERROR|")) {
@@ -146,17 +147,16 @@ public class VPNClient {
                                     "MSG|" + recipient + "|" + encryptedMessage
                             );
 
-                            System.out.println("Message encrypted and transmitted.");
+                            System.out.println(
+                                    "Message encrypted and transmitted.");
 
                         } catch (Exception e) {
-
-                            System.out.println("Encryption error: " + e.getMessage());
-
+                            System.out.println(
+                                    "Encryption error: " + e.getMessage());
                         }
 
                     } else {
-                        System.out.println(
-                                "Format: @username Your message");
+                        System.out.println("Format: @username Your message");
                     }
 
                 } else {
@@ -165,11 +165,9 @@ public class VPNClient {
             }
 
             socket.close();
-
             System.out.println("Disconnected successfully.");
 
         } catch (IOException e) {
-
             System.out.println("Unable to connect to server: "
                     + e.getMessage());
         }
