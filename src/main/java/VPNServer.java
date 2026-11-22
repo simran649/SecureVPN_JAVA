@@ -137,10 +137,16 @@ public class VPNServer {
 
                             sendMessage("SENT|" + recipient);
 
-                            System.out.println(username + " -> "
-                                    + recipient + ": " + text);
+                            System.out.println("\n========== NETWORK LOG ==========");
+                            System.out.println("Sender: " + username);
+                            System.out.println("Receiver: " + recipient);
+                            System.out.println("Encryption: AES-GCM");
+                            System.out.println("Encrypted Payload: " + text);
+                            System.out.println("Status: Forwarded");
+                            System.out.println("=================================");
 
-                        } else {
+                        }
+                        else {
                             sendMessage("ERROR|Employee is offline");
                         }
                     }

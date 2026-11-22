@@ -56,11 +56,19 @@ public class VPNClient {
 
                             String[] parts = message.split("\\|", 3);
 
-                            System.out.println("\n\nNew message from "
-                                    + parts[1] + ": " + parts[2]);
+                            try {
+                                String decryptedMessage =
+                                        EncryptionManager.decrypt(parts[2]);
+
+                                System.out.println("\n\nNew message from "
+                                        + parts[1] + ": " + decryptedMessage);
+
+                            } catch (Exception e) {
+                                System.out.println("\nUnable to decrypt message: "
+                                        + e.getMessage());
+                            }
 
                             System.out.print("Enter command: ");
-
                         }
 
                         else if (message.startsWith("USERS|")) {
@@ -129,7 +137,22 @@ public class VPNClient {
                         String recipient = command.substring(1, space);
                         String text = command.substring(space + 1);
 
-                        output.println("MSG|" + recipient + "|" + text);
+                        try {
+
+                            String encryptedMessage =
+                                    EncryptionManager.encrypt(text);
+
+                            output.println(
+                                    "MSG|" + recipient + "|" + encryptedMessage
+                            );
+
+                            System.out.println("Message encrypted and transmitted.");
+
+                        } catch (Exception e) {
+
+                            System.out.println("Encryption error: " + e.getMessage());
+
+                        }
 
                     } else {
                         System.out.println(
