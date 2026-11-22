@@ -227,14 +227,25 @@ public class DatabaseManager {
         }
     }
 
+
     public static List<String[]> getAllUsers() {
 
         List<String[]> users = new ArrayList<>();
 
         String sql = """
-            SELECT username, role, is_active
-            FROM users
-            ORDER BY username
+            SELECT
+                u.username,
+                u.role,
+                u.is_active,
+                COALESCE(c.status, 'DISCONNECTED') AS connection_status
+            FROM users u
+            LEFT JOIN connections c
+                ON c.connection_id = (
+                    SELECT MAX(c2.connection_id)
+                    FROM connections c2
+                    WHERE c2.user_id = u.user_id
+                )
+            ORDER BY u.username
             """;
 
         try (Connection conn = getConnection();
@@ -245,7 +256,8 @@ public class DatabaseManager {
                 users.add(new String[]{
                     rs.getString("username"),
                     rs.getString("role"),
-                    rs.getBoolean("is_active") ? "Active" : "Inactive"
+                    rs.getBoolean("is_active") ? "Active" : "Inactive",
+                    rs.getString("connection_status")
                 });
             }
 
@@ -255,6 +267,7 @@ public class DatabaseManager {
 
         return users;
     }
+
 
     public static List<String[]> getRecentLogs() {
 

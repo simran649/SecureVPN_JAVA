@@ -81,7 +81,7 @@ public class LoginApp extends Application {
             dashboard.setStyle("-fx-background-color: white;");
 
             if (role.equals("ADMIN")) {
-                AdminDashboard.show(stage, username);
+                AdminDashboard.show(stage, username, password);
             } else {
                 EmployeeDashboard.show(stage, username, password);
             }

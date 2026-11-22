@@ -1,14 +1,15 @@
-
 import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
 
 public class AdminDashboard {
 
-    public static void show(Stage stage, String username) {
+    public static void show(Stage stage, String username, String password) {
 
         Label heading = new Label("SecureLink | Admin Dashboard");
         heading.setStyle("-fx-font-size: 23px; -fx-font-weight: bold;");
@@ -33,7 +34,18 @@ public class AdminDashboard {
         activeCol.setCellValueFactory(data ->
                 new SimpleStringProperty(data.getValue()[2]));
 
-        userTable.getColumns().addAll(usernameCol, roleCol, activeCol);
+        TableColumn<String[], String> connectionCol =
+                new TableColumn<>("Connection Status");
+
+        connectionCol.setCellValueFactory(data ->
+                new SimpleStringProperty(data.getValue()[3]));
+
+        userTable.getColumns().addAll(
+                usernameCol,
+                roleCol,
+                activeCol,
+                connectionCol
+        );
         userTable.setColumnResizePolicy(
                 TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
 
@@ -74,6 +86,15 @@ public class AdminDashboard {
             logTable.getItems().setAll(DatabaseManager.getRecentLogs());
         });
 
+        Button messagesButton = new Button("Open Messages");
+
+        messagesButton.setOnAction(event -> {
+            Stage chatStage = new Stage();
+            EmployeeDashboard.show(chatStage, username, password);
+        });
+
+        HBox buttons = new HBox(10, refreshButton, messagesButton);
+
         VBox layout = new VBox(12,
                 heading,
                 welcome,
@@ -81,7 +102,7 @@ public class AdminDashboard {
                 userTable,
                 new Label("Recent Network Activity"),
                 logTable,
-                refreshButton
+                buttons
         );
 
         layout.setPadding(new Insets(20));

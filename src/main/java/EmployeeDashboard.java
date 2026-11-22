@@ -195,6 +195,10 @@ public class EmployeeDashboard {
 
             });
 
+            // Start listening for server messages
+            listener.setDaemon(true);
+            listener.start();
+
             // Request the current online employee list
             output.println("USERS");
 
